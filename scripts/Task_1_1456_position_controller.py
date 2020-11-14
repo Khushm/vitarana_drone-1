@@ -24,8 +24,8 @@ class Edrone():
 
 	# Kp, Ki, Kd values for z,x,y axis
 	self.throttle = [180,0.001,8300]
-	self.x_pid = [10000,0.001,90000]
-	self.y_pid = [10000,0.001,90000]
+	self.x_pid = [2500,0.001,1100000]
+	self.y_pid = [2500,0.001,1100000]
 	
 	# Declaring rc_cmd of message type edrone_cmd and initializing value
         self.rc_cmd = edrone_cmd()
@@ -157,28 +157,18 @@ class Edrone():
 		self.prev_values[0] = self.error[0]
 		self.prev_values[1] = self.error[1]
 		self.prev_values[2] = self.error[2]  
-		if(self.drone_position[2] <= self.landing + 1.5):
-			# Computing rc values
-			self.rc_cmd.rcThrottle = self.throttle_out
-			self.rc_cmd.rcRoll = 1500.0 + self.x_out
-			self.rc_cmd.rcPitch = 1500.0 + self.y_out
-			self.rc_cmd.rcYaw = 1500.0
-			
-			# Publishing the values
-			self.zero_error_pub.publish(0)
-			self.z_error_pub.publish(self.th_out)
-			self.drone_cmd_pub.publish(self.rc_cmd)
-		else:
-			# Computing rc values
-			self.rc_cmd.rcThrottle = 100
-			self.rc_cmd.rcRoll = 1500.0
-			self.rc_cmd.rcPitch = 1500.0
-			self.rc_cmd.rcYaw = 1500.0
-			
-			# Publishing the values
-			self.zero_error_pub.publish(0)
-			self.z_error_pub.publish(self.th_out)
-			self.drone_cmd_pub.publish(self.rc_cmd)
+
+		# Computing rc values
+		self.rc_cmd.rcThrottle = self.throttle_out + 411
+		self.rc_cmd.rcRoll = 1500.0 + self.x_out
+		self.rc_cmd.rcPitch = 1500.0 + self.y_out
+		self.rc_cmd.rcYaw = 1500.0
+		
+		# Publishing the values
+		self.zero_error_pub.publish(0)
+		self.z_error_pub.publish(self.th_out)
+		self.drone_cmd_pub.publish(self.rc_cmd)
+
 
 		
         
