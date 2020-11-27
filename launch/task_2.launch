@@ -1,10 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
+    <arg name="record" default="true"/>
+    <arg name="duration" default="130"/>
+    <arg name="rec_name" default="Task_2_VD.bag"/>
 	<arg name="static" default=""/>
         <include 
             file="$(find gazebo_ros)/launch/empty_world.launch">
             <arg name="world_name"  value="$(find vitarana_drone)/worlds/sector$(arg static).world"/>
         </include>
+    <group if="$(arg record)">
+    	<node name="throttler_gps" type="throttle" pkg="topic_tools" args="messages /edrone/gps 10"/>
+    
+    	<node name="rosbag_record_position" pkg="rosbag" type="record"
+              args="record -O $(find vitarana_drone)/bag_files/$(arg rec_name) --duration=$(arg duration) /edrone/gps_throttle /gazebo/model_states_throttle" output="screen"/>
+
+	<node name="gripper_client" type="gripper_client.py" pkg="vitarana_drone"/>
+	<node name="position_controller2" type="position_controller2.py" pkg="vitarana_drone"/>
+	<node name="attitude_controller2" type="attitude_controller2.py" pkg="vitarana_drone"/>
         <node name="throttler_model_states" type="throttle" pkg="topic_tools" args="messages /gazebo/model_states 10"/>
         <node name="gripper_service" type="gripper_service.py" pkg="vitarana_drone"/>
+    </group>
+
 </launch>
