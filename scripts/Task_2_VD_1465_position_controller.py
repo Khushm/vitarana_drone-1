@@ -26,10 +26,10 @@ class Edrone():
 
         rospy.init_node('position_controller2')					# initializing ros node with name position_controller
 
-        self.drone_position = [19.0009248718, 71.9998318945,22.16]
-	# self.drone_setpoint1 = [19.0007046575,0,0]
-	self.drone_setpoint2 = [0,0,0]	
-	self.drone_setpoint3 = [19.0007046575, 71.9998955286, 25.1599967919]
+        self.drone_position = [18.999241138,  71.9998195496, 16.6600201637]
+	    # self.drone_setpoint1 = [19.0009248718,71.9998318945 , 25.16]
+        self.drone_setpoint2 = [0,0,0]	
+        self.drone_setpoint3 = [18.9990965928, 72.0000664814, 28.75]	# [77.999997523, 11.000003582, 25.1599967919]
 	self.left = self.drone_setpoint2[0]
 	self.state = 1
 	self.landing = 22.1599967919							

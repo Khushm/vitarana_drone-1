@@ -12,33 +12,30 @@ import rospy
 import time
 import tf
 
-global qr_chk
-qr_chk=0
-global pick
 pick = 0
 class Edrone():
     """docstring for Edrone"""
     def __init__(self):
-        rospy.init_node('Task_2_1456_position_controller.py')					# initializing ros node with name position_controller
+        rospy.init_node('Task_2_1456_position_controller')					# initializing ros node with name position_controller
 
         self.range = [0,0,0,0,0]
-        self.drone_position = [19.0009248718, 71.9998318945,22.16]
-	    # self.drone_setpoint1 = [19.0009248718,71.9998318945 , 25.16]
-        self.drone_setpoint2 = [0,0,0]	
+        self.drone_position = [19.0, 72.0, 0.31]				# current position of eDrone
+        self.drone_setpoint1 = [110692.0702932625 * (19.0000451704 - 19),-105292.0089353767 * (72.0000000000 - 72), 3.00000000000]
+        self.drone_setpoint2 = [0,0,0]
         self.drone_setpoint3 = [19.0007046575, 71.9998955286, 22.1599967919]	# [77.999997523, 11.000003582, 25.1599967919]
         self.altitude = 0.0
         self.altitude_setpoint = 25.16
         self.landing = 	0.31
         self.i_term = [0,0,0]
 
-        self.state = 1
+        self.state = 0
 
         # Kp, Ki, Kd values for z,x,y axis
         # self.throttle = [0,0,0]
         #self.throttle = [180,0.001,8300]
         self.throttle = [50,0.0001,9500]
-        self.x_pid = [7000,0.003,7900000]
-        self.y_pid = [7000,0.003,7900000]
+        self.x_pid = [5,0.0,100]
+        self.y_pid = [5,0.0,100]
 	
 	    # Declaring rc_cmd of message type edrone_cmd and initializing value
         self.rc_cmd = edrone_cmd()
@@ -62,40 +59,15 @@ class Edrone():
         rospy.Subscriber('/edrone/range_finder_top', LaserScan ,self.range_finder_top)
         rospy.Subscriber('/pid_tuning_altitude', PidTune, self.altitude_set_pid)
         rospy.Subscriber('/edrone/gps', NavSatFix, self.gps_callback)
-        rospy.Subscriber("/edrone/camera/image_raw", Image, self.image_callback) 
-        self.bridge = CvBridge()
 
-    def image_callback(self, data):
-		try:
-			self.img = self.bridge.imgmsg_to_cv2(data, "bgr8") # Converting the image to OpenCV standard image
-			image=self.img
-			global qr_chk
-			cv2.imshow('image',image)
-			
-			barcodes=pyzbar.decode(image)
-			for barcode in barcodes:
-				barcodeData=barcode.data.decode("utf-8")
-				if(barcodeData!=0):
-					qr_chk=barcodeData
-					barcodeData=eval(barcodeData)
-					barcodeData=[float(x) for x in barcodeData]
-					self.drone_setpoint2[0]= barcodeData[0]
-					self.drone_setpoint2[1]= barcodeData[1] 
-					self.drone_setpoint2[2]= barcodeData[2]
-					pick = 1
-					print(self.drone_setpoint2)
-					print(type(barcodeData))
-					
-			#print(qr_chk) 
-			cv2.waitKey(1)
-			
-		except CvBridgeError as e:
-			print(e)
-			return
+    def lat_to_x(self,input_latitude):
+        return 110692.0702932625 * (input_latitude - 19)
+
+    def long_to_y(self,input_longitude):
+        return -105292.0089353767 * (input_longitude - 72)
 
     def range_finder_bottom(self,msg):
         self.altitude = msg.ranges[0]
-        print(self.altitude)
 
     def range_finder_top(self,msg):
         self.range[0] = msg.ranges[0]
@@ -106,9 +78,10 @@ class Edrone():
         # print(self.range)
 	
     def gps_callback(self, msg):
-        self.drone_position[0] = msg.latitude
-        self.drone_position[1] = msg.longitude
+        self.drone_position[0] = self.lat_to_x(msg.latitude)
+        self.drone_position[1] = self.long_to_y(msg.longitude)
         self.drone_position[2] = msg.altitude
+        print("x---",msg.latitude,self.drone_position[0])
  
     def altitude_set_pid(self, alt):
         self.throttle[0] = alt.Kp * 0.1
@@ -116,7 +89,7 @@ class Edrone():
         self.throttle[2] = alt.Kd * 0.1
 
     def calc_throttle(self):
-        self.error[2] = self.altitude_setpoint - self.drone_position[2]
+        self.error[2] = self.drone_setpoint1[2]-self.altitude
 
         self.error_sum[2] = self.error_sum[2] + self.error[2]
 
@@ -143,8 +116,8 @@ class Edrone():
     
 
     def calc_x_y(self):
-        self.error[0] = self.drone_setpoint3[0] - self.drone_position[0]
-        self.error[1] = self.drone_setpoint3[1] - self.drone_position[1]
+        self.error[0] = self.drone_setpoint1[0] - self.drone_position[0]
+        self.error[1] = self.drone_setpoint1[1] - self.drone_position[1]
         
         self.error_sum[0] = self.error_sum[0] + self.error[0]
         self.error_sum[1] = self.error_sum[1] + self.error[1]
@@ -191,28 +164,26 @@ class Edrone():
             self.rc_cmd.rcPitch = 1000
 
     def pid(self):
-        if(pick == 0):
-            if not(self.drone_position[0] > (self.drone_setpoint3[0] - 0.0000000516) and self.drone_position[0] < (self.drone_setpoint3[0] + 0.0000000516) and self.drone_position[1] > (self.drone_setpoint3[1] - 0.0000004380) and self.drone_position[1] < (self.drone_setpoint3[1] + 0.0000004380)):
-                self.calc_throttle()
-                print("0")
-                self.x_out, self.y_out = 0,0
+        if(True):
+            print("throttle")
+            self.calc_throttle()
+            self.x_out, self.y_out = 0,0
+            self.assign_rc()
+            self.limit_values()
+            self.publish_val()
+            if(self.drone_position[2] > 3):
+                self.state = 1
+
+            if(self.state == 1):
+                print("xy")
+                self.calc_x_y()
                 self.assign_rc()
                 self.limit_values()
                 self.publish_val()
 
-                if(self.drone_position[2] > 24.9):
-                    self.calc_x_y()
-                    self.assign_rc()
-                    self.limit_values()
-                    self.publish_val()    
-                    print("0xy")
-            
-        if(pick == 1): 
-            pass
-
 if __name__ == '__main__':
     e_drone = Edrone()
-    r = rospy.Rate(1/e_drone.sample_time)	# rate in Hz 
+    r = rospy.Rate(1/e_drone.sample_time)
     while not rospy.is_shutdown():
         e_drone.pid()
         r.sleep()
